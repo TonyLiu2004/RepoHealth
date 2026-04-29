@@ -170,6 +170,19 @@ async def analyze(repo: str = Query(..., description="The full GitHub URL to ana
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/repos")
+async def get_user_repos():
+    token = user_storage.get('token')
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    res = requests.get(
+        "https://api.github.com/user/repos?sort=updated",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    )
+    return res.json()
+
     
 if __name__ == "__main__":
     import uvicorn
