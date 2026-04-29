@@ -1,14 +1,23 @@
 import os
 import requests
 import asyncio
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Header, Query
 from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from utils import get_all_files, get_github_file_content, get_links, check_link_status, is_relevant_link
+
+FRONTEND_URL = "http://localhost:5173" 
 
 load_dotenv()
 
 app = FastAPI(title="RepoHealth API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # set to frontend URL
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
@@ -89,21 +98,23 @@ async def callback(code: str):
     if not access_token:
         raise HTTPException(status_code=400, detail="Failed to retrieve access token")
 
-    user_storage['token'] = access_token
-    return {"message": "Successfully logged in!", "access_token": access_token}
+    # user_storage['token'] = access_token
+    # return {"message": "Successfully logged in!", "access_token": access_token}
+    return RedirectResponse(f"{FRONTEND_URL}/?token={access_token}")
 
 
 @app.get("/analyze")
-async def analyze(repo: str = Query(..., description="The full GitHub URL to analyze")):
+async def analyze(repo: str = Query(..., description="The full GitHub URL to analyze"), authorization: str = Header(None)):
     """
     1. file pre-filtering
     2. link extraction using urlextract
     3. link filtering
     """
-    token = user_storage.get('token')
+    # token = user_storage.get('token')
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401)
     
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated. Please go to /login")
+    token = authorization.split(" ")[1]
 
     try:
         all_files = await get_all_files(repo, token)
@@ -172,14 +183,15 @@ async def analyze(repo: str = Query(..., description="The full GitHub URL to ana
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/repos")
-async def get_user_repos():
-    token = user_storage.get('token')
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+async def get_user_repos(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401)
+    
+    token = authorization.split(" ")[1]
     
     res = requests.get(
-        "https://api.github.com/user/repos?sort=updated",
-        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"}
+        "https://api.github.com/user/repos",
+        headers={"Authorization": f"Bearer {token}"}
     )
     return res.json()
 
