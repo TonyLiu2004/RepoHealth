@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react'
+import RepoDisplay from './components/repoDisplay'
 import './App.css'
 
 const API_BASE = "http://localhost:8000";
 
+interface Repo {
+  id: number;
+  name: string;
+  html_url: string;
+}
+
 function App() {
-  const [repos, setRepos] = useState([]);
+  const [repos, setRepos] = useState<Repo[]>([]);
   const [userInputUrl, setUserInputUrl] = useState("");
-  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [selectedRepos, setSelectedRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<Record<string, any>>({});
+
   // Check URL for token (if backend redirects back with it)
   useEffect(() => {
       const urlParams = new URLSearchParams(window.location.search);
-      const tokenFromUrl = urlParams.get('token'); // or 'access_token'
+      const tokenFromUrl = urlParams.get('token');
       
       if (tokenFromUrl) {
         localStorage.setItem('token', tokenFromUrl); // Save it        
@@ -41,7 +49,14 @@ function App() {
     });
     const data = await res.json();
     console.log(data);
-    setRepos(data);
+    if (data.status === '401') {
+      localStorage.removeItem('token');
+      setRepos([]);
+      setAnalysis({});
+      setSelectedRepos([]);
+    } else {
+      setRepos(data);
+    }
   };
 
   const handleAnalyze = async (repoUrl: string) => {
@@ -69,17 +84,28 @@ function App() {
   const analyzeAll = async () => {
     setLoading(true);
     setAnalysis({});
-    for (const repoUrl of selectedRepos) {
-      await handleAnalyze(repoUrl);
+    for (const repo of selectedRepos) {
+      await handleAnalyze(repo.html_url);
     }
   };
 
-  const toggleRepo = (repoName: string) => {
+  const toggleRepo = (repo: Repo) => {
     setSelectedRepos(prev => 
-      prev.includes(repoName)
-        ? prev.filter(r => r !== repoName)
-        : [...prev, repoName]
+      prev.some(r => r.html_url === repo.html_url)
+        ? prev.filter(r => r.html_url !== repo.html_url)
+        : [...prev, repo]
     );
+  };
+
+  const handleAddRepo = (userInputUrl: string) => {
+    try {
+      new URL(userInputUrl);
+      const repo: Repo = { id: Date.now(), name: userInputUrl, html_url: userInputUrl };
+      toggleRepo(repo);
+      setUserInputUrl("");
+    } catch (err) {
+      alert("Please enter a valid Repository URL");
+    }
   };
 
   if (!localStorage.getItem('token')) {
@@ -105,7 +131,9 @@ function App() {
         <span className="spinner" style={{margin: '0 auto'}}></span> 
       : null}
 
-      {analysis && Object.keys(analysis).length > 0 && (
+      <RepoDisplay analysis={analysis} />
+
+      {/* {analysis && Object.keys(analysis).length > 0 && (
         <section style={{padding: '24px'}}>
           <h2>Analysis Results:</h2>
           <div className="results-list">
@@ -117,7 +145,7 @@ function App() {
             ))}
           </div>
         </section>
-      )} 
+      )}  */}
 
       <section id="control-section">
         <input 
@@ -126,12 +154,7 @@ function App() {
           value={userInputUrl}
           onChange={(e) => setUserInputUrl(e.target.value)}
         />
-        <button id="add-repo-btn" onClick={() => {
-          if (userInputUrl) {
-            toggleRepo(userInputUrl);
-            setUserInputUrl("");
-          }
-        }}>
+        <button id="add-repo-btn" onClick={() => handleAddRepo(userInputUrl)}>
           Add URL
         </button>
 
@@ -150,13 +173,13 @@ function App() {
           {repos.length > 0 && (
             <section id="repo-list">
               <div id="repo-items">
-                {repos.map((repo: any) => (
+                {repos.map((repo: Repo) => (
                   <div key={repo.id}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <input 
                         type="checkbox" 
-                        checked={selectedRepos.includes(repo.html_url)}
-                        onChange={() => toggleRepo(repo.html_url)}
+                        checked={selectedRepos.some(r => r.html_url === repo.html_url)}
+                        onChange={() => toggleRepo(repo)}
                       />
                       <div className="repo-item">{repo.name}</div>
                     </label>
@@ -172,13 +195,13 @@ function App() {
           {selectedRepos.length > 0 && (
             <section id="selected-repos">
               <ul>
-                {selectedRepos.map((url) => (
-                  <li key={url} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {selectedRepos.map((repo) => (
+                  <li key={repo.html_url} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span 
-                      onClick={() => toggleRepo(url)}
+                      onClick={() => toggleRepo(repo)}
                       className='repo-items' 
                     >
-                      <div className="repo-item" id="selected-repos-btn">{url}</div>
+                      <div className="repo-item" id="selected-repos-btn">{repo.name}</div>
                     </span>
                   </li>
                 ))}

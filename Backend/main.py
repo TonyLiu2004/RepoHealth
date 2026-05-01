@@ -145,7 +145,12 @@ async def analyze(repo: str = Query(..., description="The full GitHub URL to ana
                 unique_links.update(filtered_links)
 
         # Check link status for every link
-        link_tasks = [check_link_status(url, 10) for url in unique_links]
+        semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent link checks
+        async def check_with_semaphore(url):
+            async with semaphore:
+                return await check_link_status(url, 10)
+        
+        link_tasks = [check_with_semaphore(url) for url in unique_links]
         statuses = await asyncio.gather(*link_tasks)
 
         link_statuses = {}
