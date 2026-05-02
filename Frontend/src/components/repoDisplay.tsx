@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './repoDisplay.css'
 import ResultsDisplay from './resultsDisplay';
+import RepoPieChart from './repoPieChart';
 
 const getRepoNameFromUrl = (repoUrl: string) => {
   try {
@@ -55,7 +56,20 @@ const RepoDisplay = ({ analysis }: Record<string, any>) => {
         {selectedAnalysis ? (
           <div className="repo-result-card">
             <h2>{getRepoNameFromUrl(selectedAnalysis['repo'])}</h2>
-            <ResultsDisplay results={selectedAnalysis['file_analysis'] ?? { message: 'No results available yet' }} />
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', margin: 'auto' }}>
+              <RepoPieChart active={selectedAnalysis['active_links']} inactive={selectedAnalysis['total_links'] - selectedAnalysis['active_links']} />
+              <div style={{ marginLeft: '2rem' }}>
+                {selectedAnalysis['file_analysis'] ? 
+                  <div>
+                    <div>Scanned {selectedAnalysis['files_scanned']} files</div>
+                    <div>{selectedAnalysis['active_links']} / {selectedAnalysis['total_links']} Active Links</div>
+                  </div>
+                 : null
+                }
+                
+              </div>
+            </div>
+            <ResultsDisplay results={selectedAnalysis['file_analysis'] ?? null} />
           </div>
         ) : (
           <div className="empty-state">Select an analyzed repo on the left to see results.</div>

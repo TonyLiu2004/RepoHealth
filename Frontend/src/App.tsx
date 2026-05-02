@@ -133,19 +133,13 @@ function App() {
 
       <RepoDisplay analysis={analysis} />
 
-      {/* {analysis && Object.keys(analysis).length > 0 && (
-        <section style={{padding: '24px'}}>
-          <h2>Analysis Results:</h2>
-          <div className="results-list">
-            {Object.entries(analysis).map(([repoUrl, result]) => (
-              <div key={repoUrl} className="result-item">
-                <h3>{repoUrl}</h3>
-                <pre>{JSON.stringify(result, null, 2)}</pre>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}  */}
+      <button 
+        id="analyze-btn"
+        onClick={() => analyzeAll()} 
+        disabled={loading || selectedRepos.length === 0}
+      >
+        {loading ? "Analyzing..." : "Analyze"}
+      </button>
 
       <section id="control-section">
         <input 
@@ -156,14 +150,6 @@ function App() {
         />
         <button id="add-repo-btn" onClick={() => handleAddRepo(userInputUrl)}>
           Add URL
-        </button>
-
-        <button 
-          id="analyze-btn"
-          onClick={() => analyzeAll()} 
-          disabled={loading || selectedRepos.length === 0}
-        >
-          {loading ? "Analyzing..." : "Analyze"}
         </button>
       </section>
 
@@ -196,11 +182,8 @@ function App() {
             <section id="selected-repos">
               <ul>
                 {selectedRepos.map((repo) => (
-                  <li key={repo.html_url} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span 
-                      onClick={() => toggleRepo(repo)}
-                      className='repo-items' 
-                    >
+                  <li key={repo.html_url} style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => toggleRepo(repo)}>
+                    <span className='repo-items'>
                       <div className="repo-item" id="selected-repos-btn">{repo.name}</div>
                     </span>
                   </li>

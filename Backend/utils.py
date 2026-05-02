@@ -119,21 +119,23 @@ async def check_link_status(link: str, timeout: int):
 
 def is_relevant_link(link, repo_url, FILTER):
     link_lower = link.lower()
-    # 1. Must be a web link
+    # Must be a web link
     if not link_lower.startswith(('http://', 'https://')):
         return False
     
-    # 2. Exclude Internal GitHub Navigation/Files
-    # Filters out things like /tree/main, /blob/master, /pull/1, etc.
     if any(pattern in link_lower for pattern in FILTER):
         return False
+
+    # Exclude template URLs
+    if '{' in link or '}' in link:
+        return False
     
-    # # 3. Exclude Localhost and common noise
-    # if any(noise in link_lower for noise in ["localhost", "127.0.0.1", "0.0.0.0", "mailto:"]):
-    #     return False
+    # Exclude Localhost
+    if any(noise in link_lower for noise in ["localhost", "127.0.0.1", "0.0.0.0"]):
+        return False
     
-    # # 4. Exclude links to the repo itself (optional, but keeps it clean)
-    # if link_lower.rstrip('/') == repo_url.lower().rstrip('/'):
-    #     return False
+    # Exclude links to the repo itself
+    if link_lower.rstrip('/') == repo_url.lower().rstrip('/'):
+        return False
         
     return True

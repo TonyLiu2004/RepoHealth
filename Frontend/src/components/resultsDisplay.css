@@ -1,0 +1,16 @@
+.hover-row {
+    position: relative;
+    
+}
+.hover-files {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 83%;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    color: #333;
+}
+.hover-row:hover .hover-files {
+    display: block;
+}

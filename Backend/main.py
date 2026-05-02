@@ -44,17 +44,34 @@ TARGET_EXTENSIONS = (
     # Ruby / PHP / Go / Rust
     '.rb', '.php', '.go', '.rs',
     
-    # Config & Metadata (Crucial for project health)
+    # Config & Metadata
     '.json', '.yaml', '.yml', '.toml', '.xml', '.gradle'
 )
 
 EXCLUDE_FILES = (
-    'package-lock.json', 
+    'package-lock.json',
+    'package.json',
     'yarn.lock', 
     'pnpm-lock.yaml', 
     'composer.lock', 
     'cargo.lock', 
-    'go.sum'
+    'go.sum',
+    'requirements.txt'
+)
+
+EXCLUDE_FOLDERS = (
+    'node_modules',
+    'dist',
+    'build',
+    '.git',
+    '.github',
+    '__pycache__',
+    '.venv',
+    'venv',
+    'env',
+    'alembic',
+    '.vscode',
+
 )
 
 LINK_EXCLUDE_PATTERNS = {
@@ -124,12 +141,23 @@ async def analyze(repo: str = Query(..., description="The full GitHub URL to ana
         for file in all_files:
             filename = os.path.basename(file)
             
+            #exclude files
             if file in EXCLUDE_FILES or filename in EXCLUDE_FILES:
+                continue
+            
+            # exclude folders
+            path_parts = file.split('/')
+            skip_file = False
+            for folder in EXCLUDE_FOLDERS:
+                if folder in path_parts:
+                    skip_file = True
+                    break
+            if skip_file:
                 continue
 
             if file.endswith(TARGET_EXTENSIONS) or filename in TARGET_FILES:
                 to_fetch.append(file)
-
+        print(to_fetch)
         # Get file contents from github
         tasks = [get_github_file_content(repo, file, token) for file in to_fetch]
         contents = await asyncio.gather(*tasks)
@@ -181,7 +209,10 @@ async def analyze(repo: str = Query(..., description="The full GitHub URL to ana
         return {
             "repo": repo,
             "health_status": "Scanned",
-            "file_analysis": results
+            "file_analysis": results,
+            "files_scanned": len(to_fetch),
+            "active_links": active_links,
+            "total_links": len(unique_links)
         }
 
     except Exception as e:
@@ -194,8 +225,9 @@ async def get_user_repos(authorization: str = Header(None)):
     
     token = authorization.split(" ")[1]
     
+    # get first 100 repositories sorted by last updated
     res = requests.get(
-        "https://api.github.com/user/repos",
+        "https://api.github.com/user/repos?per_page=100&sort=updated",
         headers={"Authorization": f"Bearer {token}"}
     )
     return res.json()

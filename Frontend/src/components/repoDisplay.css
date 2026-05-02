@@ -3,6 +3,8 @@
   gap: 24px;
   padding: 24px;
   margin-top: 24px;
+  height: 600px;
+  overflow: auto;
 }
 
 .repo-display-left {
@@ -13,6 +15,7 @@
   border-radius: 18px;
   padding: 20px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
 }
 
 .repo-display-right {
@@ -22,6 +25,7 @@
   border-radius: 18px;
   padding: 20px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  overflow: auto;
 }
 
 .repo-table {
