@@ -13,18 +13,29 @@ browser_semaphore = asyncio.Semaphore(3)
 async def get_all_files(repo_url, access_token):
     parts = repo_url.rstrip('/').split('/')
     owner, repo = parts[-2], parts[-1]
-    url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/main?recursive=1"
     
     headers = {
         "Accept": "application/vnd.github+json",
-        "Authorization": f"token {access_token}"
+        "Authorization": f"Bearer {access_token}"
     }
 
     async with httpx.AsyncClient() as client:
+        repo_info = await client.get(
+            f"https://api.github.com/repos/{owner}/{repo}",
+            headers=headers
+        )
+        repo_info.raise_for_status()
+        default_branch = repo_info.json()["default_branch"]
+
+        url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{default_branch}?recursive=1"
+        
         response = await client.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
-        return [item['path'] for item in data['tree'] if item['type'] == 'blob']
+        return [
+            item['path'] for item in data['tree'] 
+            if item['type'] == 'blob'
+        ]
 
 async def get_github_file_content(repo_url, file_path, access_token):
     parts = repo_url.rstrip('/').split('/')
@@ -49,9 +60,9 @@ def get_links(text):
 async def check_with_browser(link: str):
     async with browser_semaphore:
         async with async_playwright() as p:
-            # Use 'chromium' as it's usually the most compatible
+            # Use 'chromium' since it's usually the most compatible
             browser = await p.chromium.launch(headless=True)
-            # Mimic a real user context
+            
             context = await browser.new_context(
                 user_agent=HEADERS["User-Agent"],
                 viewport={'width': 1280, 'height': 720}
@@ -59,11 +70,10 @@ async def check_with_browser(link: str):
             page = await context.new_page()
             
             try:
-                # 'networkidle' ensures JS has finished loading (important for React/Figma)
-                response = await page.goto(link, wait_until="networkidle", timeout=20000)
+                response = await page.goto(link, wait_until="load")
                 status = response.status if response else 404
                 
-                # Double-check for "soft 404s" (text on page)
+                # check for soft 404s (text on page)
                 content = await page.content()
                 soup_text = content.lower()
                 soft_404_terms = ["page not found", "404 error", "this page doesn't exist"]
@@ -78,6 +88,7 @@ async def check_with_browser(link: str):
                     "note": "Verified with Playwright"
                 }
             except Exception as e:
+                print(link, e)
                 return {"link": link, "status": "Browser Error", "active": False, "error": str(e)}
             finally:
                 await browser.close()
@@ -127,7 +138,7 @@ def is_relevant_link(link, repo_url, FILTER):
         return False
 
     # Exclude template URLs
-    if '{' in link or '}' in link:
+    if '{' in link or '}' in link or '[' in link or ']' in link:
         return False
     
     # Exclude Localhost
