@@ -58,9 +58,9 @@ def get_links(text):
     return list(set(link for link in links if link.startswith(('http://', 'https://'))))
 
 async def check_with_browser(link: str):
+    # limit to 3 at a time
     async with browser_semaphore:
         async with async_playwright() as p:
-            # Use 'chromium' since it's usually the most compatible
             browser = await p.chromium.launch(headless=True)
             
             context = await browser.new_context(
